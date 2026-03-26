@@ -43,12 +43,49 @@
         <div class="cart-sidebar-footer">
             <div class="cart-total">Total: <span id="cartTotal">$0 COP</span></div>
             <button class="btn-primary" style="width: 100%; justify-content: center; margin-top: 15px;"
-                onclick="checkout()">Ir a Pagar</button>
+                onclick="openCheckoutModal()">Ir a Pagar</button>
         </div>
     </div>
 
     <!-- TOAST -->
     <div class="toast" id="toast">✅ Añadido al carrito</div>
+
+    <!-- CHECKOUT MODAL -->
+    <div class="modal-overlay" id="checkoutModal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeCheckoutModal()">✕</span>
+            <h3 style="font-family: var(--font-display); font-size: 32px; color: var(--dark); margin-bottom: 20px;">Datos de Envío</h3>
+            <form id="checkoutForm" onsubmit="submitCheckout(event)">
+                <div class="form-group">
+                    <label>Nombre Completo *</label>
+                    <input type="text" id="custName" required placeholder="Ej: Juan Pérez">
+                </div>
+                <div class="form-group">
+                    <label>Dirección de Envío *</label>
+                    <input type="text" id="custAddress" required placeholder="Ej: Calle 123 #45-67">
+                </div>
+                <div class="form-group">
+                    <label>Ciudad *</label>
+                    <input type="text" id="custCity" required placeholder="Ej: Bogotá">
+                </div>
+                <div class="form-group">
+                    <label>Barrio / Indicaciones</label>
+                    <input type="text" id="custNotes" placeholder="Apartamento, torre, barrio, etc.">
+                </div>
+                <div class="form-group">
+                    <label>Método de Pago *</label>
+                    <select id="custPayment" required>
+                        <option value="">Selecciona un método</option>
+                        <option value="Nequi">Nequi</option>
+                        <option value="Daviplata">Daviplata</option>
+                        <option value="Bancolombia">Transferencia Bancolombia</option>
+                        <option value="Contra Entrega">Pago Contra Entrega</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 10px;">Confirmar y Enviar</button>
+            </form>
+        </div>
+    </div>
 
     <!-- NAVBAR -->
     <nav>
@@ -887,14 +924,47 @@
             document.body.style.overflow = '';
         }
 
-        function checkout() {
+        function openCheckoutModal() {
             if (cartItems.length === 0) return;
+            document.getElementById('checkoutModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+            closeCart(); // Close the cart sidebar to focus on checkout
+        }
+
+        function closeCheckoutModal() {
+            document.getElementById('checkoutModal').classList.remove('open');
+            if (!document.getElementById('cartSidebar').classList.contains('open')) {
+                document.body.style.overflow = '';
+            }
+        }
+
+        function submitCheckout(e) {
+            e.preventDefault();
+            if (cartItems.length === 0) return;
+
+            const name = document.getElementById('custName').value;
+            const address = document.getElementById('custAddress').value;
+            const city = document.getElementById('custCity').value;
+            const notes = document.getElementById('custNotes').value;
+            const payment = document.getElementById('custPayment').value;
+
             const total = document.getElementById('cartTotal').textContent;
-            let msg = `¡Hola! Quiero hacer un pedido por ${total}:\n\n`;
+            let msg = `¡Hola! Quiero hacer un pedido.\n\n`;
+            
+            msg += `*MIS DATOS*\n`;
+            msg += `Nombre: ${name}\n`;
+            msg += `Dirección: ${address}\n`;
+            msg += `Ciudad: ${city}\n`;
+            if (notes) msg += `Indicaciones: ${notes}\n`;
+            msg += `Método de pago: ${payment}\n\n`;
+
+            msg += `*MI PEDIDO (${total})*\n`;
             cartItems.forEach(item => {
                 msg += `- ${item.name} (${item.priceText} COP)\n`;
             });
+
             window.open('https://wa.me/573044458339?text=' + encodeURIComponent(msg), '_blank');
+            closeCheckoutModal();
         }
 
         function openMobile() { document.getElementById('mobileMenu').classList.add('open'); }
