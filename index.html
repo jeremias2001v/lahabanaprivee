@@ -29,6 +29,21 @@
         <div class="cart-count" id="cartCount">0</div>
     </div>
 
+    <!-- CART SIDEBAR -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-sidebar-header">
+            <h3>Tu Carrito</h3>
+            <span class="cart-sidebar-close" onclick="closeCart()">✕</span>
+        </div>
+        <div class="cart-sidebar-items" id="cartList">
+            <div style="text-align:center; padding: 40px 20px; color: rgba(26, 18, 8, 0.6); font-family:var(--font-head);">🛒 Tu carrito está vacío</div>
+        </div>
+        <div class="cart-sidebar-footer">
+            <div class="cart-total">Total: <span id="cartTotal">$0 COP</span></div>
+            <button class="btn-primary" style="width: 100%; justify-content: center; margin-top: 15px;" onclick="checkout()">Ir a Pagar</button>
+        </div>
+    </div>
+
     <!-- TOAST -->
     <div class="toast" id="toast">✅ Añadido al carrito</div>
 
@@ -759,24 +774,115 @@
     </footer>
 
     <script>
-        let cartItems = 0;
+        let cartItems = [];
 
-        function addCart() {
-            cartItems++;
-            document.getElementById('cartCount').textContent = cartItems;
+        function addToCart(event, element) {
+            if(event) event.stopPropagation();
+            
+            // Find the closest product card
+            const card = element.closest('.product-card');
+            if(!card) return;
+
+            const name = card.querySelector('.product-name').textContent;
+            
+            // Extract image src or text content for emoji based images
+            let imgHtml = '';
+            const imgEl = card.querySelector('.product-img-wrap img');
+            if (imgEl) {
+                imgHtml = `<img src="${imgEl.src}" alt="${name}" class="cart-item-img">`;
+            } else {
+                const innerText = card.querySelector('.product-img-wrap').innerText.trim() || '🛒';
+                const emojiMatch = innerText.match(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u);
+                imgHtml = `<div class="cart-item-img">${emojiMatch ? emojiMatch[0] : '🛒'}</div>`;
+            }
+
+            const priceText = card.querySelector('.product-price').textContent;
+            // Parse price string to number ("$155.000 COP" -> 155000)
+            const price = parseInt(priceText.replace(/[^0-9]/g, ''));
+
+            cartItems.push({ name, price, imgHtml, priceText: priceText.replace(' COP', '').trim(), originalPriceText: priceText });
+            
+            updateCartSidebar();
+
             const toast = document.getElementById('toast');
+            toast.textContent = `✅ Añadido al carrito`;
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 2200);
         }
 
+        // Replace global addCart function to prevent inline click errors if any remain
+        window.addCart = function() {};
+
+        // Add event listeners to all cart buttons
+        document.querySelectorAll('.product-add-btn').forEach(btn => {
+            btn.removeAttribute('onclick');
+            btn.addEventListener('click', (e) => addToCart(e, btn));
+        });
+
+        // Add event listeners to all product cards
+        document.querySelectorAll('.product-card').forEach(card => {
+            card.removeAttribute('onclick');
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.product-add-btn')) return;
+                addToCart(e, card);
+            });
+        });
+
+        function updateCartSidebar() {
+            const list = document.getElementById('cartList');
+            const totalEl = document.getElementById('cartTotal');
+            const countEl = document.getElementById('cartCount');
+            
+            countEl.textContent = cartItems.length;
+            list.innerHTML = '';
+            
+            if (cartItems.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding: 40px 20px; color: rgba(26, 18, 8, 0.6); font-family:var(--font-head);">🛒 Tu carrito está vacío</div>';
+                totalEl.textContent = '$0 COP';
+                return;
+            }
+
+            let total = 0;
+            cartItems.forEach((item, index) => {
+                total += item.price;
+                list.innerHTML += `
+                    <div class="cart-item">
+                        ${item.imgHtml}
+                        <div class="cart-item-info">
+                            <div class="name">${item.name}</div>
+                            <div class="price">${item.priceText} COP</div>
+                        </div>
+                        <button class="cart-item-remove" onclick="removeCartItem(${index})">✕</button>
+                    </div>
+                `;
+            });
+
+            totalEl.textContent = '$' + total.toLocaleString('es-CO') + ' COP';
+        }
+
+        function removeCartItem(index) {
+            cartItems.splice(index, 1);
+            updateCartSidebar();
+        }
+
         function openCart() {
-            const toast = document.getElementById('toast');
-            toast.textContent = cartItems > 0 ? `🛒 ${cartItems} producto${cartItems > 1 ? 's' : ''} en tu carrito` : '🛒 Tu carrito está vacío';
-            toast.classList.add('show');
-            setTimeout(() => {
-                toast.textContent = '✅ Añadido al carrito';
-                toast.classList.remove('show');
-            }, 2400);
+            document.getElementById('cartSidebar').classList.add('open');
+            document.body.style.overflow = 'hidden'; 
+        }
+
+        function closeCart() {
+            document.getElementById('cartSidebar').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        
+        function checkout() {
+            if(cartItems.length === 0) return;
+            const total = document.getElementById('cartTotal').textContent;
+            let msg = `¡Hola! Quiero hacer un pedido por ${total}:\n\n`;
+            cartItems.forEach(item => {
+                msg += `- ${item.name} (${item.priceText} COP)\n`;
+            });
+            window.open('https://wa.me/573003819898?text=' + encodeURIComponent(msg), '_blank');
         }
 
         function openMobile() { document.getElementById('mobileMenu').classList.add('open'); }
